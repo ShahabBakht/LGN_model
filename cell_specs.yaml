@@ -1,0 +1,6 @@
+cell_types: !!python/tuple
+  - 'sON_TF1'
+  - 'sON_TF2'
+num_cells: !!python/tuple
+  - 7
+  - 5
