@@ -110,9 +110,5 @@ if  __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     lgn = Conv3dLGN(in_channels = 3,out_channels = 12, kernel_size = 10)
-    # kdom_data = lgn._set_weights(cell_type='sON_TF8',num_cells=1)
-    # p,f = lgn._load_param_values()
-    # plt.plot(kdom_data[::60,0,0]), plt.show()
-    # plt.imshow(kdom_data[0,:,:]), plt.show()
 
     pdb.set_trace()
