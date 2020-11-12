@@ -105,7 +105,6 @@ class Conv3dLGN(nn.Conv3d):
             
             return kdom_data#, knondom_data
 
-
 if  __name__ == "__main__":
     import matplotlib.pyplot as plt
 
