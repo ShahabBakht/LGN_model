@@ -65,10 +65,14 @@ class Conv3dLGN(nn.Conv3d):
         all_angles = param_table['tuning_angle'][param_table['model_id']==cell_type]
 
         # this needs to be corrected for sONsOFF/sONtOFF cells
-        if 'sOFF' in cell_type:
+        if (('sOFF' in cell_type) or ('tOFF' in cell_type)) and (cell_type != 'sONsOFF_001') and (cell_type != 'sONtOFF_001'):
             amplitude = -1.0
+        elif (cell_type == 'sONsOFF_001') or (cell_type == 'sONtOFF_001'):
+            amplitude = 1.0
+            amplitude_2 = -1.0
         else:
             amplitude = 1.0
+            
 
         kdom_data = torch.empty((num_cells,3,*self.kernel_size))
         k_dom_nondom_data = torch.empty((num_cells,3,*self.kernel_size))
@@ -115,7 +119,7 @@ class Conv3dLGN(nn.Conv3d):
                                             rotation=0, 
                                             origin='center')
                 
-                Kernelnondom = SpatioTemporalFilter(spatial_filter = Snondom, temporal_filter = Tnondom, amplitude=amplitude)
+                Kernelnondom = SpatioTemporalFilter(spatial_filter = Snondom, temporal_filter = Tnondom, amplitude=amplitude_2)
 
                 KernelOnOff = TwoSubfieldLinearCell(dominant_filter = Kerneldom, 
                                                     nondominant_filter = Kernelnondom, 
@@ -163,11 +167,18 @@ class Conv3dLGN_layer(nn.Module):
 if  __name__ == "__main__":
     import matplotlib.pyplot as plt
     import time
+
+    data = np.load('allen_movie_one.npy')
+    print(data.shape)
     t0 = time.time()
-    LGN_layer = Conv3dLGN_layer(in_channels=3, kernel_size= (21,51,51))
+    LGN_layer = Conv3dLGN_layer(in_channels=3, kernel_size= (21,51,51)).to('cuda')
     t1 = time.time()
-    x = torch.rand((1, 3, 20, 64, 64))
-    out = LGN_layer(x)
+    x = torch.Tensor(data[::30,:,:]).unsqueeze_(0).unsqueeze_(0).repeat([1,3,1,1,1]).to('cuda')
+#     x = torch.rand((1, 3, 20, 64, 64)).to('cuda')
+#     x = torch.Tensor(data[::30,:,:]).view((1,1,*data.shape)).to('cuda')
+    out = LGN_layer(x).detach().numpy()
     t2 = time.time()
     print(t1-t0, t2-t1)
+    with open('LGN_allen_movie_one.npy','wb') as f:
+        np.save(f,out)
     pdb.set_trace()
