@@ -1,7 +1,6 @@
 # TO DO:
-# 1- modify the code to incorporate the new sONsOFF/sONtOFF implementation 
-# 2- the amplitude sign should be corrected for sONsOFF/sONtOFF cells  
-# 3- how to set the kernel_size?
+# 1- the amplitude sign should be corrected for sONsOFF/sONtOFF cells  
+# 2- how to set the kernel_size?
 
 import os, sys
 import pdb
@@ -72,7 +71,7 @@ class Conv3dLGN(nn.Conv3d):
             amplitude = 1.0
 
         kdom_data = torch.empty((num_cells,3,*self.kernel_size))
-        knondom_data = torch.empty((num_cells,1,*self.kernel_size))
+        k_dom_nondom_data = torch.empty((num_cells,3,*self.kernel_size))
         kernels = dict()
 
         for cellcount in range(0,num_cells):
@@ -100,11 +99,12 @@ class Conv3dLGN(nn.Conv3d):
             
             kdom = Kerneldom.get_spatiotemporal_kernel(row_range=range(0,self.kernel_size[1]),col_range=range(0,self.kernel_size[2]))
             temporal_ds_rate = (kdom.full().shape[0]-2)//(self.kernel_size[0]-1)
-            kdom_data[cellcount,:,:,:,:] = torch.Tensor(kdom.full())[::temporal_ds_rate,:,:].repeat([3,1,1,1]) 
 
-            kernels['dom'] = kdom_data
+            if cell_type != 'sONsOFF_001' and cell_type != 'sONtOFF_001':
+                kdom_data[cellcount,:,:,:,:] = torch.Tensor(kdom.full())[::temporal_ds_rate,:,:].repeat([3,1,1,1]) 
+                kernels['dom'] = kdom_data
 
-            if cell_type == 'sONsOFF_001' or cell_type == 'sONtOFF_001':
+            elif cell_type == 'sONsOFF_001' or cell_type == 'sONtOFF_001':
                 Tnondom = TemporalFilterCosineBump(weights=(all_weight_non_dom_0s[sampled_cell_idx],all_weight_non_dom_1s[sampled_cell_idx]), 
                                             kpeaks=(all_kpeaks_non_dom_0s[sampled_cell_idx],all_kpeaks_non_dom_1s[sampled_cell_idx]), 
                                             delays=(all_delay_non_dom_0s[sampled_cell_idx],all_delay_non_dom_1s[sampled_cell_idx]))
@@ -124,10 +124,8 @@ class Conv3dLGN(nn.Conv3d):
                                                     dominant_subfield_location = (0, 0),
                                                     transfer_function = MultiTransferFunction((symbolic_x, symbolic_y),'Heaviside(x)*(x)+Heaviside(y)*(y)'))
                 k_dom_nondom = KernelOnOff.get_spatiotemporal_kernel(row_range=range(0,self.kernel_size[1]),col_range=range(0,self.kernel_size[2]))
-                # knondom = Kerneldom.get_spatiotemporal_kernel(row_range=range(0,self.kernel_size[1]),col_range=range(0,self.kernel_size[2]))
-                pdb.set_trace()
-                knondom_data[cellcount,:,:,:,:] = torch.Tensor(knondom.full())[::temporal_ds_rate,:,:].repeat([1,1,1,1]) #repeat([3,1,1,1])
-                kernels['nondom'] = knondom_data
+                k_dom_nondom_data[cellcount,:,:,:,:] = torch.Tensor(k_dom_nondom.full())[::temporal_ds_rate,:,:].repeat([3,1,1,1]) 
+                kernels['dom_nondom'] = k_dom_nondom_data
 
         return kernels
 
@@ -144,39 +142,32 @@ class Conv3dLGN_layer(nn.Module):
         for cell_type, num_cells in zip(self.cell_types,self.num_cells_per_type):
             self.num_channels += num_cells
             if cell_type != 'sONsOFF_001' and cell_type != 'sONtOFF_001':  
-                self.Convs[cell_type] = Conv3dLGN(in_channels=in_channels, out_channels=num_cells, kernel_size=kernel_size, cell_type=cell_type)
+                self.Convs[cell_type+'_dom'] = Conv3dLGN(in_channels=in_channels, out_channels=num_cells, kernel_size=kernel_size, cell_type=cell_type)
             else:
-                for cellcount in range(0,num_cells):
-                    self.Convs[cell_type+'_dom'+str(cellcount)] = Conv3dLGN(in_channels=3, out_channels=1, kernel_size=kernel_size, cell_type=cell_type)
-                    self.Convs[cell_type+'_nondom'+str(cellcount)] = Conv3dLGN(in_channels=1, out_channels=1, kernel_size=kernel_size, cell_type=cell_type, conv_type='nondom')
-             
+                self.Convs[cell_type+'_dom_nondom'] = Conv3dLGN(in_channels=in_channels, out_channels=num_cells, kernel_size=kernel_size, cell_type=cell_type, conv_type='dom_nondom')
+                
     def forward(self, x):
         B, C, D, W, H = x.shape
         out = torch.empty((B, self.num_channels, D, W, H))
         i = 0
         for cell_type, num_cells in zip(self.cell_types, self.num_cells_per_type):
             if cell_type != 'sONsOFF_001' and cell_type != 'sONtOFF_001':
-                out[:,i:(i+num_cells),:] = self.Convs[cell_type](x)
+                out[:,i:(i+num_cells),:] = self.Convs[cell_type+'_dom'](x)
             else:
-                for cellcount in range(0,num_cells):
-                    # out_dom = self.Convs[cell_type+'_dom'+str(cellcount)](x)
-                    # print(out_dom.shape)
-                    # pdb.set_trace()
-                    out[:,i+cellcount,:] = self.Convs[cell_type+'_nondom'+str(cellcount)](self.Convs[cell_type+'_dom'+str(cellcount)](x))
-                    print(i+cellcount)
+                out[:,i:(i+num_cells),:] = self.Convs[cell_type+'_dom_nondom'](x)
             i += num_cells
 
         return out
 
 
-
-
 if  __name__ == "__main__":
     import matplotlib.pyplot as plt
-
-    # lgn = Conv3dLGN(in_channels = 3,out_channels = 7, kernel_size = (10,10,10), cell_type='sON_TF8')
-    LGN_layer = Conv3dLGN_layer(in_channels=3, kernel_size= (11,51,51))
-    x = torch.rand((1, 3, 50, 64, 64))
-    # out = lgn(x)
+    import time
+    t0 = time.time()
+    LGN_layer = Conv3dLGN_layer(in_channels=3, kernel_size= (21,51,51))
+    t1 = time.time()
+    x = torch.rand((1, 3, 20, 64, 64))
     out = LGN_layer(x)
+    t2 = time.time()
+    print(t1-t0, t2-t1)
     pdb.set_trace()
