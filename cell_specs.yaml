@@ -1,6 +1,8 @@
 cell_types: !!python/tuple
-  - 'sON_TF1'
-  - 'sON_TF2'
+  #- 'sON_TF1'
+  #- 'sON_TF2'
+  - 'sONsOFF_001'
 num_cells: !!python/tuple
-  - 7
-  - 5
+  #- 7
+  #- 5
+  - 8
