@@ -1,5 +1,5 @@
 # TO DO:
-# 1- the amplitude sign should be corrected for sONsOFF/sONtOFF cells  
+# 1- how to set the temporal kernel_size? The temporal sampling rate of the input and the kernel should be the same
 # 2- how to set the kernel_size?
 
 import os, sys
