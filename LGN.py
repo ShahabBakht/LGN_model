@@ -149,16 +149,17 @@ class Conv3dLGN_layer(nn.Module):
                 self.Convs[cell_type+'_dom'] = Conv3dLGN(in_channels=in_channels, out_channels=num_cells, kernel_size=kernel_size, cell_type=cell_type)
             else:
                 self.Convs[cell_type+'_dom_nondom'] = Conv3dLGN(in_channels=in_channels, out_channels=num_cells, kernel_size=kernel_size, cell_type=cell_type, conv_type='dom_nondom')
-                
+        self.ReLU = nn.ReLU()
+
     def forward(self, x):
         B, C, D, W, H = x.shape
         out = torch.empty((B, self.num_channels, D, W, H))
         i = 0
         for cell_type, num_cells in zip(self.cell_types, self.num_cells_per_type):
             if cell_type != 'sONsOFF_001' and cell_type != 'sONtOFF_001':
-                out[:,i:(i+num_cells),:] = self.Convs[cell_type+'_dom'](x)
+                out[:,i:(i+num_cells),:] = self.ReLU(self.Convs[cell_type+'_dom'](x))
             else:
-                out[:,i:(i+num_cells),:] = self.Convs[cell_type+'_dom_nondom'](x)
+                out[:,i:(i+num_cells),:] = self.ReLU(self.Convs[cell_type+'_dom_nondom'](x))
             i += num_cells
 
         return out
