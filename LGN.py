@@ -169,8 +169,9 @@ if  __name__ == "__main__":
     import matplotlib.pyplot as plt
     import time
 
-    data = np.load('allen_movie_one.npy')
-    print(data.shape)
+    data = np.load('allen_movie_one.npy').astype('float64')
+    data_norm = ((data * 2) - np.max(data)) / np.max(data)
+    print(data.shape,np.max(data_norm),np.min(data_norm))
     t0 = time.time()
     LGN_layer = Conv3dLGN_layer(in_channels=3, kernel_size= (19,51,51)).to('cuda')
     t1 = time.time()
