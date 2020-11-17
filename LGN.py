@@ -157,9 +157,9 @@ class Conv3dLGN_layer(nn.Module):
         i = 0
         for cell_type, num_cells in zip(self.cell_types, self.num_cells_per_type):
             if cell_type != 'sONsOFF_001' and cell_type != 'sONtOFF_001':
-                out[:,i:(i+num_cells),:] = self.ReLU(self.Convs[cell_type+'_dom'](x))
+                out[:,i:(i+num_cells),:] = (self.Convs[cell_type+'_dom'](x))
             else:
-                out[:,i:(i+num_cells),:] = self.ReLU(self.Convs[cell_type+'_dom_nondom'](x))
+                out[:,i:(i+num_cells),:] = (self.Convs[cell_type+'_dom_nondom'](x))
             i += num_cells
 
         return out
@@ -173,7 +173,7 @@ if  __name__ == "__main__":
     data_norm = ((data * 2) - np.max(data)) / np.max(data)
     print(data.shape,np.max(data_norm),np.min(data_norm))
     t0 = time.time()
-    LGN_layer = Conv3dLGN_layer(in_channels=3, kernel_size= (19,51,51)).to('cuda')
+    LGN_layer = Conv3dLGN_layer(in_channels=3, kernel_size= (19,21,21)).to('cuda')
     t1 = time.time()
     x = torch.Tensor(data[::1,:,:]).unsqueeze_(0).unsqueeze_(0).repeat([1,3,1,1,1]).to('cuda')
 #     x = torch.rand((1, 3, 20, 64, 64)).to('cuda')
